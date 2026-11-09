@@ -229,7 +229,6 @@ let S = {};
 const $ = id => document.getElementById(id);
 const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 const fmt = t => { t = Math.round(t); return Math.floor(t/60) + "m " + String(t%60).padStart(2,"0") + "s"; };
-const left = () => Math.max(1, Math.ceil((S.total - S.t) / 60));
 
 function highlight(line){
   const re = /(\/\/.*$)|("[^"]*")|\b(import|from|export|const|async|await|function|return|if|try|catch|throw|new|null)\b/g;
@@ -293,14 +292,14 @@ function tick(){
 }
 function tickUI(){
   const st = $("statusTxt"); if (!st) return;
-  if (S.running) st.textContent = S.paused ? `Paused at ${fmt(S.t)}` : `Working for ${fmt(S.t)}, about ${left()} min left`;
+  if (S.running) st.textContent = S.paused ? `Paused at ${fmt(S.t)}` : `Working for ${fmt(S.t)}`;
   if (S.id === "priorities" && $("usageTxt")) {
     $("usageTxt").textContent = S.usage.toFixed(0) + "% used";
     $("usageFill").style.width = S.usage + "%";
     $("costTxt").textContent = "$" + S.cost.toFixed(2) + " so far";
   }
-  document.querySelectorAll("[data-left]").forEach(e => e.textContent = S.running ? `About ${left()} min left on the run` : "The run has finished");
-  if ($("readLeft")) $("readLeft").textContent = S.running ? `Agent: about ${left()} min left` : "Agent finished";
+  document.querySelectorAll("[data-left]").forEach(e => e.textContent = S.running ? "The agent is still working" : "The run has finished");
+  if ($("readLeft")) $("readLeft").textContent = S.running ? "Agent: still working" : "Agent finished";
 }
 function finish(){
   S.running = false;
