@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeBreak Prototype</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: #fff;
+    color: #111;
+    font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+  .muted { color: #888; }
+  .small { font-size: 12px; }
+  button {
+    font: inherit; background: none; border: 0; padding: 0;
+    color: #111; text-decoration: underline; cursor: pointer;
+  }
+  select { font: inherit; padding: 1px 2px; }
+  p { margin: 0 0 8px; }
+  ol, ul { margin: 0; padding: 0; list-style: none; }
+  li { margin: 0 0 6px; }
+
+  /* IDE layout */
+  .ide { display: grid; grid-template-columns: 200px 1fr 340px; height: 100vh; }
+  .pane { overflow: auto; min-width: 0; }
+  .pane + .pane { border-left: 1px solid #e6e6e6; }
+  .pane-title { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: #888; padding: 12px 16px 8px; }
+
+  /* Dark IDE, light side panel */
+  .dark { background: #1e1e1e; color: #d4d4d4; }
+  .dark .muted, .dark .pane-title, .dark .tree .dir { color: #808080; }
+  .dark button { color: #d4d4d4; }
+  .dark .tabs, .dark .agent { border-color: #333; }
+  .dark.pane + .dark.pane { border-left-color: #333; }
+  .panel-wrap { border-left-color: #1e1e1e !important; }
+  .dark .tabs .on { color: #fff; }
+  .dark .tree .open { color: #fff; }
+
+  /* Explorer */
+  .tree { padding: 0 16px; }
+  .tree li { margin: 0 0 4px; }
+  .tree .dir { color: #888; }
+  .tree .ind { padding-left: 12px; }
+  .tree .open { font-weight: 600; }
+
+  /* Editor + agent */
+  .center { display: grid; grid-template-rows: auto 1fr auto; }
+  .tabs { display: flex; gap: 16px; padding: 10px 16px 8px; border-bottom: 1px solid #e6e6e6; }
+  .tabs .on { font-weight: 600; }
+  .editor { overflow: auto; padding: 12px 0; }
+  .code { margin: 0; counter-reset: ln; }
+  .code span.l { display: block; padding-left: 56px; position: relative; white-space: pre; }
+  .code span.l::before {
+    counter-increment: ln; content: counter(ln);
+    position: absolute; left: 0; width: 40px; text-align: right; color: #bbb;
+  }
+  .kw { color: #fff; font-weight: 600; }
+  .cm { color: #6a6a6a; }
+  .dark .code span.l::before { color: #555; }
+  .agent { border-top: 1px solid #e6e6e6; padding: 12px 16px; max-height: 45vh; overflow: auto; }
+  .msg { margin: 0 0 10px; }
+  .who { font-weight: 600; margin-right: 6px; }
+  .prompt { display: flex; gap: 8px; margin-top: 12px; }
+  .prompt input { flex: 1; font: inherit; color: inherit; background: transparent; border: 0; border-bottom: 1px solid #444; padding: 4px 0; outline: none; }
+  .prompt input::placeholder { color: #666; }
+
+  /* CodeBreak panel */
+  .panel { padding: 0 16px 24px; }
+  .panel-head { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 0 8px; }
+  .panel-head .name { font-weight: 600; }
+  .panel h3 { font-size: 13px; font-weight: 600; margin: 20px 0 8px; }
+  .tl li { display: grid; grid-template-columns: 40px 44px 1fr; gap: 6px; }
+  .tl .done { color: #888; }
+  .tl .now { font-weight: 600; }
+  .bar { height: 2px; background: #eee; margin: 6px 0 10px; }
+  .bar > div { height: 2px; background: #111; }
+  .mode, .sub { display: none; }
+  .mode.on, .sub.on { display: block; }
+  .opts label { cursor: pointer; }
+  .fit { font-size: 14px; margin: 4px 0 16px; }
+  .fit strong { font-size: 18px; font-weight: 600; }
+  .card { min-height: 84px; margin: 8px 0; }
+  .card .a { display: none; }
+  .card.flip .a { display: block; }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: baseline; }
+  .spread { display: flex; justify-content: space-between; gap: 12px; }
+  .breath { display: flex; flex-direction: column; align-items: center; margin: 12px 0; }
+  .breath circle { fill: none; stroke: #111; stroke-width: 1; animation: breathe 8s ease-in-out infinite; }
+  @keyframes breathe { 0%, 100% { r: 18px; } 50% { r: 50px; } }
+  @media (prefers-reduced-motion: reduce) { .breath circle { animation: none; } }
+
+  @media (max-width: 900px) {
+    .ide { grid-template-columns: 1fr 320px; }
+    .explorer { display: none; }
+    .pane + .pane { border-left: 0; }
+    .panel-wrap { border-left: 1px solid #e6e6e6; }
+  }
+  @media (max-width: 640px) {
+    .ide { grid-template-columns: 1fr; height: auto; }
+    .center { min-height: 70vh; }
+    .panel-wrap { border-left: 0; border-top: 1px solid #e6e6e6; }
+  }
+</style>
+</head>
+<body>
+<div class="ide">
+
+  <!-- Explorer -->
+  <aside class="pane explorer dark">
+    <div class="pane-title">Explorer</div>
+    <ul class="tree mono">
+      <li class="dir">src/</li>
+      <li class="ind dir">auth/</li>
+      <li class="ind" style="padding-left:24px">session.ts</li>
+      <li class="ind dir">pages/</li>
+      <li class="ind" style="padding-left:24px">checkout.tsx</li>
+      <li class="ind" style="padding-left:24px">signup.tsx</li>
+      <li class="ind dir">validators/</li>
+      <li class="ind open" style="padding-left:24px">email.ts</li>
+      <li class="ind" style="padding-left:24px">email.test.ts</li>
+      <li class="dir">db/</li>
+      <li class="ind">schema.sql</li>
+      <li>package.json</li>
+    </ul>
+  </aside>
+
+  <!-- Editor + agent -->
+  <section class="pane center dark">
+    <div class="tabs mono">
+      <span class="on">email.ts</span>
+      <span class="muted">email.test.ts</span>
+      <span class="muted">checkout.tsx</span>
+    </div>
+    <div class="editor">
+<pre class="code"><span class="l"><span class="cm">// Validates signup emails</span></span><span class="l"><span class="kw">const</span> EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;</span><span class="l"></span><span class="l"><span class="kw">export function</span> isValidEmail(input: string): boolean {</span><span class="l">  <span class="kw">const</span> value = input.trim().toLowerCase();</span><span class="l">  <span class="kw">if</span> (value.length > 254) <span class="kw">return</span> false;</span><span class="l">  <span class="kw">return</span> EMAIL.test(value);</span><span class="l">}</span><span class="l"></span><span class="l"><span class="kw">export function</span> normalizeEmail(input: string): string {</span><span class="l">  <span class="kw">return</span> input.trim().toLowerCase();</span><span class="l">}</span></pre>
+    </div>
+    <div class="agent">
+      <div class="pane-title" style="padding:0 0 8px">Agent</div>
+      <p class="msg"><span class="who">You</span>Add email validation to the signup form. Reject obvious typos and add tests.</p>
+      <p class="msg"><span class="who">Agent</span>Reading <code>signup.tsx</code> and existing validators.</p>
+      <p class="msg"><span class="who">Agent</span>Drafted the regex in <code>validators/email.ts</code>.</p>
+      <p class="msg" id="agent-status"><span class="who">Agent</span><span class="muted">Writing tests for the regex...</span></p>
+      <div class="prompt">
+        <input placeholder="Ask the agent" aria-label="Ask the agent">
+        <button>Send</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CodeBreak side panel -->
+  <aside class="pane panel-wrap">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="name">CodeBreak</span>
+        <select id="mode" aria-label="Mode">
+          <option value="learn">Learning</option>
+          <option value="rest">Rest</option>
+          <option value="switch">Task switching</option>
+          <option value="back">Getting back</option>
+        </select>
+      </div>
+
+      <!-- Timeline while waiting -->
+      <div id="timeline-wait">
+        <p class="small">About 4 min left</p>
+        <div class="bar"><div style="width:40%"></div></div>
+        <ol class="tl small">
+          <li class="done"><span>0:00</span><span>Done</span><span>Read signup form</span></li>
+          <li class="done"><span>0:40</span><span>Done</span><span>Drafted email regex</span></li>
+          <li class="now"><span>1:15</span><span>Now</span><span>Writing tests</span></li>
+          <li><span>~2:30</span><span>Next</span><span>Update user model</span></li>
+          <li><span>~4:00</span><span>Next</span><span>Run test suite</span></li>
+        </ol>
+      </div>
+
+      <!-- Timeline when finished -->
+      <div id="timeline-done" style="display:none">
+        <p class="small">Finished in 5 min 10 s</p>
+        <div class="bar"><div style="width:100%"></div></div>
+        <ol class="tl small">
+          <li class="done"><span>0:00</span><span>Done</span><span>Read signup form</span></li>
+          <li class="done"><span>0:40</span><span>Done</span><span>Drafted email regex</span></li>
+          <li class="done"><span>1:15</span><span>Done</span><span>Wrote tests</span></li>
+          <li class="now"><span>2:30</span><span>Paused</span><span>Update user model, needs you</span></li>
+          <li class="done"><span>4:50</span><span>Done</span><span>Ran tests, 42 passed</span></li>
+        </ol>
+      </div>
+
+      <!-- 1. Learning -->
+      <section class="mode on" data-mode="learn">
+        <h3>Learn while you wait</h3>
+        <div class="row small">
+          <label><input type="radio" name="learn" value="related" checked> This task</label>
+          <label><input type="radio" name="learn" value="topic"> Your topic</label>
+        </div>
+
+        <div class="sub on" data-sub="related">
+          <p class="muted small" style="margin-top:12px">Sized for a 4 min wait: one lesson, one question.</p>
+          <p><strong>Regex anchors</strong></p>
+          <p>The agent used <code>^</code> and <code>$</code> in the email pattern. <code>^</code> matches the start of the string and <code>$</code> the end. Without them, a pattern can match an email hidden inside a longer string.</p>
+          <p style="margin-top:12px"><strong>Quick check</strong></p>
+          <p>Does <code>/\w+@\w+\.\w+/</code> reject <code>"x a@b.co"</code>?</p>
+          <ul class="opts">
+            <li><label><input type="radio" name="q" value="no"> No, it still matches</label></li>
+            <li><label><input type="radio" name="q" value="yes"> Yes, it rejects it</label></li>
+          </ul>
+          <p class="small" id="quiz-result"></p>
+        </div>
+
+        <div class="sub" data-sub="topic">
+          <p class="fit" style="margin:12px 0 4px"><strong>4 cards</strong> fit before the agent needs you.</p>
+          <p style="font-size:14px; margin-bottom:16px">Topic: Rust ownership <button>change</button></p>
+          <div class="card" id="card">
+            <p class="small muted">Card 3 of 8</p>
+            <p class="q">What does <code>&amp;mut x</code> give you?</p>
+            <p class="a">A mutable borrow. Only one can exist at a time, and no shared borrows can exist alongside it.</p>
+          </div>
+          <div class="row">
+            <button id="flip">Show answer</button>
+            <button id="next">Next card</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Rest -->
+      <section class="mode" data-mode="rest">
+        <h3>Take a break</h3>
+        <p>About 4 min until the agent needs you.</p>
+        <ul class="opts">
+          <li><label><input type="radio" name="rest" value="stretch"> Stretch <span class="muted small">2 min</span></label></li>
+          <li><label><input type="radio" name="rest" value="look"> Look away <span class="muted small">20-20-20</span></label></li>
+          <li><label><input type="radio" name="rest" value="breathe" checked> Breathe <span class="muted small">until done</span></label></li>
+        </ul>
+        <div class="sub" data-rest="stretch">
+          <p style="margin-top:12px">Roll your shoulders back 5 times. Tilt your head left, hold 10 s, then right.</p>
+        </div>
+        <div class="sub" data-rest="look">
+          <p style="margin-top:12px">Look at something about 20 feet away for 20 seconds.</p>
+          <p class="muted small" id="look-timer">20 s</p>
+        </div>
+        <div class="sub on" data-rest="breathe">
+          <div class="breath">
+            <svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="18"/></svg>
+            <p id="breath-label">Breathe in</p>
+          </div>
+          <p class="muted small" style="text-align:center">Ends on its own when the agent finishes.</p>
+        </div>
+      </section>
+
+      <!-- 3. Task switching -->
+      <section class="mode" data-mode="switch">
+        <h3>Fits in this wait</h3>
+        <p class="muted small">From your todo list, GitHub and Slack.</p>
+        <ul>
+          <li class="spread"><span>Review PR #212 <span class="muted small">GitHub</span></span><span class="row small"><span class="muted">2 min</span><button>Start</button></span></li>
+          <li class="spread"><span>Reply to Sam <span class="muted small">Slack</span></span><span class="row small"><span class="muted">1 min</span><button>Start</button></span></li>
+          <li class="spread"><span class="mono">session.ts:48</span><span class="row small"><span class="muted">3 min</span><button>Start</button></span></li>
+        </ul>
+        <h3>Too long for now</h3>
+        <ul class="muted small">
+          <li class="spread"><span>Write migration doc</span><span>20 min</span></li>
+          <li class="spread"><span>Review PR #198</span><span>15 min</span></li>
+        </ul>
+      </section>
+
+      <!-- 4. Getting back -->
+      <section class="mode" data-mode="back">
+        <h3>The agent</h3>
+        <ul>
+          <li>Added an email regex to <code>email.ts</code></li>
+          <li>Wrote 6 tests for empty, missing @, and trailing text</li>
+          <li>Ran the suite: 42 passed</li>
+        </ul>
+        <h3>Before the wait, you were</h3>
+        <ul>
+          <li>Editing <code>checkout.tsx</code> line 120, the coupon field</li>
+          <li>About to check signup on mobile</li>
+        </ul>
+        <h3>Needs your input</h3>
+        <p>Should <code>users.email</code> be unique and case insensitive?</p>
+        <div class="row">
+          <button>Answer</button>
+          <button>Open diff</button>
+          <button>Back to checkout.tsx</button>
+        </div>
+      </section>
+    </div>
+  </aside>
+</div>
+
+<script>
+  const modeSel = document.getElementById('mode');
+  const tlWait = document.getElementById('timeline-wait');
+  const tlDone = document.getElementById('timeline-done');
+  const status = document.getElementById('agent-status');
+
+  function showMode(m) {
+    document.querySelectorAll('[data-mode]').forEach(s => s.classList.toggle('on', s.dataset.mode === m));
+    const done = m === 'back';
+    tlWait.style.display = done ? 'none' : 'block';
+    tlDone.style.display = done ? 'block' : 'none';
+    status.innerHTML = done
+      ? '<span class="who">Agent</span>Done. 42 tests passed.'
+      : '<span class="who">Agent</span><span class="muted">Writing tests for the regex...</span>';
+  }
+  modeSel.addEventListener('change', e => showMode(e.target.value));
+  showMode(modeSel.value);
+
+  document.querySelectorAll('input[name=learn]').forEach(r => r.addEventListener('change', e => {
+    document.querySelectorAll('[data-sub]').forEach(s => s.classList.toggle('on', s.dataset.sub === e.target.value));
+  }));
+
+  document.querySelectorAll('input[name=q]').forEach(r => r.addEventListener('change', e => {
+    document.getElementById('quiz-result').textContent = e.target.value === 'no'
+      ? 'Right. With no anchors it matches the a@b.co part. That is why the agent added ^ and $.'
+      : 'Not quite. With no anchors it still matches the a@b.co part.';
+  }));
+
+  const cards = [
+    ['What does <code>&amp;mut x</code> give you?', 'A mutable borrow. Only one can exist at a time, and no shared borrows can exist alongside it.'],
+    ['When is a value dropped?', 'When its owner goes out of scope.'],
+    ['What does <code>move</code> do on a closure?', 'It makes the closure take ownership of the values it captures.'],
+  ];
+  let ci = 0;
+  const card = document.getElementById('card');
+  document.getElementById('flip').onclick = () => card.classList.toggle('flip');
+  document.getElementById('next').onclick = () => {
+    ci = (ci + 1) % cards.length;
+    card.classList.remove('flip');
+    card.querySelector('.q').innerHTML = cards[ci][0];
+    card.querySelector('.a').innerHTML = cards[ci][1];
+    card.querySelector('.small').textContent = 'Card ' + (3 + ci) + ' of 8';
+  };
+
+  document.querySelectorAll('input[name=rest]').forEach(r => r.addEventListener('change', e => {
+    document.querySelectorAll('[data-rest]').forEach(s => s.classList.toggle('on', s.dataset.rest === e.target.value));
+  }));
+
+  const bl = document.getElementById('breath-label');
+  let inhale = true;
+  setInterval(() => { inhale = !inhale; bl.textContent = inhale ? 'Breathe in' : 'Breathe out'; }, 4000);
+
+  let lt = 20;
+  setInterval(() => {
+    lt = lt <= 0 ? 20 : lt - 1;
+    document.getElementById('look-timer').textContent = lt + ' s';
+  }, 1000);
+</script>
+</body>
+</html>

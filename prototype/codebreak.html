@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Waiting prototypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FFFFFF; --side:#F4F5F7; --panel:#F7F8FA; --title:#ECEEF1; --soft:#E9EDF3;
+  --text:#1D2430; --muted:#646C79; --faint:#9AA1AC;
+  --accent:#3358D4; --accent-text:#FFFFFF; --track:#DDE2EA;
+  --kw:#7A3FBF; --str:#2E7D5B; --com:#9AA1AC;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#1B1D22; --side:#202329; --panel:#1F2227; --title:#16181C; --soft:#2A2E36;
+    --text:#E4E7EC; --muted:#A0A7B2; --faint:#6E7581;
+    --accent:#86A2FF; --accent-text:#10152A; --track:#333843;
+    --kw:#C49BFF; --str:#7FD1A6; --com:#6E7581;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1B1D22; --side:#202329; --panel:#1F2227; --title:#16181C; --soft:#2A2E36;
+  --text:#E4E7EC; --muted:#A0A7B2; --faint:#6E7581;
+  --accent:#86A2FF; --accent-text:#10152A; --track:#333843;
+  --kw:#C49BFF; --str:#7FD1A6; --com:#6E7581;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{height:100%;margin:0;background:var(--title);color:var(--text);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;line-height:1.5}
+button,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+.app{height:100%;display:flex;flex-direction:column}
+.titlebar{display:flex;align-items:center;gap:16px;padding:8px 16px;background:var(--title)}
+.project{font-weight:500;color:var(--muted);white-space:nowrap}
+.switch{display:flex;gap:4px;margin:0 auto;flex-wrap:wrap;justify-content:center}
+.switch button{padding:5px 12px;border-radius:6px;color:var(--muted)}
+.switch button:hover{color:var(--text)}
+.switch button[aria-current="page"]{background:var(--bg);color:var(--text);font-weight:500}
+.replay{padding:5px 12px;border-radius:6px;color:var(--muted)}
+.replay:hover{color:var(--text)}
+
+.main{flex:1;min-height:0;display:grid;grid-template-columns:210px 1fr 380px}
+.side{background:var(--side);padding:14px 0;overflow:auto}
+.tree{list-style:none;margin:0;padding:0;font-size:13px}
+.tree li{padding:3px 16px;color:var(--muted);white-space:nowrap}
+.tree .d1{padding-left:28px}.tree .d2{padding-left:40px}
+.tree .on{color:var(--text);font-weight:600}
+
+.editor{background:var(--bg);display:flex;flex-direction:column;min-width:0}
+.tab{padding:10px 20px 6px;font-size:13px;color:var(--muted);display:flex;justify-content:space-between;gap:12px}
+.code{flex:1;overflow:auto;padding:8px 0 24px;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:13px;line-height:1.7}
+.code pre{margin:0}
+.ln{display:inline-block;width:44px;padding-right:16px;text-align:right;color:var(--faint);user-select:none}
+.kw{color:var(--kw)}.str{color:var(--str)}.com{color:var(--com)}
+
+.reader{flex:1;overflow:auto;padding:24px 32px 40px}
+.reader article{max-width:62ch}
+.reader h2{font-size:22px;font-weight:600;line-height:1.3;margin:0 0 6px}
+.reader .meta{color:var(--muted);margin:0 0 20px}
+.reader p{font-size:15.5px;line-height:1.65;margin:0 0 14px}
+.reader .foot{display:flex;gap:12px;align-items:center;margin-top:24px;color:var(--muted)}
+
+.agent{background:var(--panel);display:flex;flex-direction:column;min-height:0}
+.agent-head{padding:12px 18px 4px;display:flex;justify-content:space-between;color:var(--muted);font-size:13px}
+.feed{flex:1;overflow:auto;padding:8px 18px 18px;display:flex;flex-direction:column;gap:14px}
+.bubble{background:var(--soft);padding:10px 12px;border-radius:8px;align-self:flex-end;max-width:92%}
+.status{display:flex;align-items:center;gap:8px;font-weight:500}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1.4s ease-in-out infinite}
+.dot.still{animation:none;background:var(--faint)}
+.dot.ok{animation:none;background:var(--str)}
+@keyframes pulse{50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.dot{animation:none}}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.steps li:last-child{color:var(--text)}
+
+.nudge{background:var(--bg);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.nudge h3{margin:0;font-size:15px;font-weight:600;line-height:1.35}
+.nudge p{margin:0;color:var(--muted)}
+.nudge .q{color:var(--text)}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+.btn{padding:7px 12px;border-radius:6px;background:var(--soft)}
+.btn:hover{filter:brightness(.97)}
+.btn.primary{background:var(--accent);color:var(--accent-text)}
+.list{display:flex;flex-direction:column;gap:6px}
+.opt{text-align:left;padding:9px 12px;border-radius:6px;background:var(--soft);display:flex;justify-content:space-between;gap:10px}
+.opt span:last-child{color:var(--muted);white-space:nowrap;font-size:13px}
+.group-title{font-weight:500;margin-top:4px}
+textarea{width:100%;min-height:84px;resize:vertical;border:0;border-radius:6px;padding:10px;background:var(--soft)}
+.chip{padding:4px 10px;border-radius:999px;background:var(--soft);font-size:13px}
+
+.day{display:flex;flex-direction:column;gap:4px}
+.track{position:relative;height:10px;border-radius:5px;background:var(--track);overflow:hidden}
+.seg{position:absolute;top:0;bottom:0;background:var(--accent);opacity:.75}
+.scale{display:flex;justify-content:space-between;font-size:12px;color:var(--faint)}
+
+.meter{display:flex;flex-direction:column;gap:6px;padding:12px 18px 0}
+.meter .top{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.meter .track{height:8px}
+.fill{position:absolute;inset:0 auto 0 0;background:var(--accent);transition:width .4s linear}
+
+.composer{padding:12px 18px 16px;display:flex;gap:8px}
+.composer .input{flex:1;padding:9px 12px;border-radius:8px;background:var(--bg);color:var(--faint)}
+
+@media (max-width:1000px){.main{grid-template-columns:1fr 360px}.side{display:none}}
+@media (max-width:720px){.main{grid-template-columns:1fr}.editor{display:none}.editor.reading{display:flex}.editor.reading + .agent{display:none}.project{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="titlebar">
+    <span class="project">checkout-service</span>
+    <nav class="switch" aria-label="Prototypes">
+      <button data-id="light" data-n="1" aria-label="Prototype 1">1</button>
+      <button data-id="heavy" data-n="2" aria-label="Prototype 2">2</button>
+      <button data-id="priorities" data-n="3" aria-label="Prototype 3">3</button>
+    </nav>
+    <button class="replay" id="replay">Replay</button>
+  </header>
+  <div class="main">
+    <aside class="side">
+      <ul class="tree">
+        <li>src</li>
+        <li class="d1">auth</li>
+        <li class="d2">api.ts</li>
+        <li class="d2 on">session.ts</li>
+        <li class="d2">store.ts</li>
+        <li class="d1">checkout</li>
+        <li class="d2">cart.ts</li>
+        <li class="d2">payment.ts</li>
+        <li>tests</li>
+        <li class="d1">session.test.ts</li>
+        <li>package.json</li>
+      </ul>
+    </aside>
+    <section class="editor" id="editor"></section>
+    <section class="agent">
+      <div class="agent-head"><span>Agent</span><span id="model">Model: Standard</span></div>
+      <div id="meter"></div>
+      <div class="feed" id="feed"></div>
+      <div class="composer">
+        <div class="input">Ask the agent…</div>
+        <button class="btn" id="engageBtn">Engagement</button>
+        <button class="btn" id="stop">Stop</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+const CODE = `import { refreshToken } from "./api";
+import { getSession, saveSession } from "./store";
+
+const REFRESH_WINDOW_MS = 60_000;
+
+export async function ensureFreshSession() {
+  const session = await getSession();
+  if (!session) return null;
+
+  const expiresIn = session.expiresAt - Date.now();
+  if (expiresIn > REFRESH_WINDOW_MS) return session;
+
+  try {
+    const next = await refreshToken(session.refreshToken);
+    await saveSession(next);
+    return next;
+  } catch (err) {
+    // TODO: checkout fails here when two refreshes race
+    throw new Error("Session expired");
+  }
+}`;
+
+const PROMPT = "Fix the race in ensureFreshSession so checkout doesn’t fail when two token refreshes happen at once.";
+
+const SCENARIOS = {
+  heavy: { total: 540, nudgeAt: 60, steps: [
+    [0,"Reading src/auth/session.ts"],[40,"Reading store.ts and api.ts"],[90,"Searching for ensureFreshSession (4 uses found)"],
+    [150,"Planning a shared lock around the refresh"],[220,"Editing src/auth/session.ts"],[300,"Running tests (12 passed, 2 failed)"],
+    [380,"Fixing tests/session.test.ts"],[460,"Running tests again"]]},
+  priorities: { total: 760, steps: [
+    [0,"Reading src/auth/session.ts"],[50,"Editing src/auth/session.ts"],[100,"Editing src/auth/store.ts"],[150,"Editing src/auth/api.ts"],
+    [200,"Editing src/checkout/cart.ts"],[250,"Editing src/checkout/payment.ts"],[320,"Rewriting tests for checkout"],
+    [420,"Running tests (31 passed, 6 failed)"],[520,"Fixing failing checkout tests"],[640,"Running tests again"]]},
+  light: { total: 600, nudgeAt: 50, steps: [
+    [0,"Reading src/auth/session.ts"],[40,"Searching for ensureFreshSession (4 uses found)"],[110,"Planning a shared lock around the refresh"],
+    [200,"Editing src/auth/session.ts"],[300,"Running tests (12 passed, 2 failed)"],[400,"Fixing tests/session.test.ts"],[500,"Running tests again"]]}
+};
+
+const READINGS = {
+  p1:{t:"Why checkout moved to token refresh",m:"Design note from the platform team, 4 min",b:[
+    "In March the team replaced long-lived sessions with short tokens that refresh in the background. The goal was to limit how long a stolen token stays useful.",
+    "The tradeoff was more moving parts at checkout. When a cart page and a payment call both notice an expiring token, they can each try to refresh it, and one of them loses.",
+    "The note suggests a single shared refresh that every caller waits on. That is the approach your current run is building."]},
+  p2:{t:"How the payments team calls this service",m:"Integration overview, 5 min",b:[
+    "Payments calls ensureFreshSession before every charge request, and retries once on failure. A failed refresh shows up to customers as a declined card.",
+    "Their dashboards count these as checkout errors, which is why the race you are fixing matters to their numbers as well as yours.",
+    "If your change alters the error message or the retry behavior, they ask for a heads-up in their channel."]},
+  p3:{t:"This quarter’s goal for checkout",m:"Team goals, 2 min",b:[
+    "The checkout group aims to cut failed checkouts by a fifth this quarter. Session errors are the second largest cause after payment provider timeouts.",
+    "Fixing the refresh race is listed as one of three projects expected to move that number."]},
+  u1:{t:"How Rust thinks about memory",m:"Concept, 6 min",b:[
+    "Rust gives every value exactly one owner. When the owner goes out of scope, the value is freed, so there is no garbage collector and no manual free.",
+    "Other code can borrow a value, either many readers at once or a single writer. The compiler checks these rules before the program runs.",
+    "That check is why data races, like the one your agent is fixing, are hard to write in Rust in the first place."]},
+  u2:{t:"Why sourdough rises",m:"Outside coding, 3 min",b:[
+    "A sourdough starter is a colony of wild yeast and lactic acid bacteria living in flour and water.",
+    "The yeast eat sugars from the flour and release carbon dioxide, which gets trapped in the stretchy gluten network and lifts the dough. The bacteria make acids that give the bread its tang."]},
+  u3:{t:"A short history of the computer mouse",m:"Outside coding, 4 min",b:[
+    "Douglas Engelbart’s team built the first mouse in the 1960s: a wooden block with two metal wheels underneath.",
+    "It appeared in public in 1968, in a demo that also showed hypertext and video calls. It took until the 1980s, with the Apple Lisa and Macintosh, for the mouse to reach ordinary desks."]},
+  u4:{t:"Basics of color contrast",m:"Design, 5 min",b:[
+    "Contrast is the difference in lightness between text and its background. Hue matters much less than people expect.",
+    "Accessibility guidelines ask for a contrast ratio of at least 4.5 to 1 for body text. A quick test is to view your design in grayscale: if text gets hard to read, contrast is too low."]}
+};
+
+let S = {};
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const fmt = t => { t = Math.round(t); return Math.floor(t/60) + "m " + String(t%60).padStart(2,"0") + "s"; };
+const left = () => Math.max(1, Math.ceil((S.total - S.t) / 60));
+
+function highlight(line){
+  const re = /(\/\/.*$)|("[^"]*")|\b(import|from|export|const|async|await|function|return|if|try|catch|throw|new|null)\b/g;
+  let out = "", last = 0, m;
+  while ((m = re.exec(line))) {
+    out += esc(line.slice(last, m.index));
+    const cls = m[1] ? "com" : m[2] ? "str" : "kw";
+    out += `<span class="${cls}">${esc(m[0])}</span>`;
+    last = re.lastIndex;
+  }
+  return out + esc(line.slice(last));
+}
+function showCode(){
+  const ed = $("editor"); ed.classList.remove("reading");
+  ed.innerHTML = `<div class="tab"><span>session.ts</span></div><div class="code"><pre>${
+    CODE.split("\n").map((l,i)=>`<span class="ln">${i+1}</span>${highlight(l)}`).join("\n")}</pre></div>`;
+}
+function showReading(key){
+  const r = READINGS[key], ed = $("editor"); ed.classList.add("reading");
+  ed.innerHTML = `<div class="tab"><span>Reading</span><span id="readLeft"></span></div>
+    <div class="reader"><article><h2>${r.t}</h2><p class="meta">${r.m}</p>${r.b.map(p=>`<p>${p}</p>`).join("")}
+    <div class="foot"><button class="btn" id="backCode">Back to code</button></div></article></div>`;
+  $("backCode").onclick = showCode;
+  S.reading = true; tickUI();
+}
+
+function start(id){
+  clearInterval(S.timer);
+  const sc = SCENARIOS[id];
+  S = { id, total: sc.total, steps: sc.steps.slice(), nudgeAt: sc.nudgeAt, t: 0, running: true, paused: false,
+        shown: 0, nudged: false, usage: 78, rate: 0.03, cost: 0, prompt: PROMPT, away: false, reading: false };
+  document.querySelectorAll(".switch button").forEach(b => {
+    if (b.dataset.id === id) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
+  $("model").textContent = "Model: Standard";
+  $("engageBtn").hidden = id === "priorities";
+  showCode();
+  $("meter").innerHTML = id === "priorities" ? `<div class="meter">
+      <div class="top"><span>Weekly usage</span><span id="usageTxt"></span></div>
+      <div class="track"><div class="fill" id="usageFill"></div></div>
+      <div class="top"><span>This run</span><span id="costTxt"></span></div></div>` : "";
+  $("feed").innerHTML = `<div class="bubble" id="promptBubble">${esc(S.prompt)}</div>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusTxt"></span></div>
+    <ul class="steps" id="steps"></ul><div id="nudge"></div><div id="after"></div>`;
+  S.timer = setInterval(tick, 100);
+  tickUI();
+}
+
+function tick(){
+  if (!S.running || S.paused) return;
+  S.t += 1; // 10 simulated seconds per real second
+  if (S.id === "priorities") { S.usage = Math.min(100, S.usage + S.rate); S.cost += S.rate * 0.4; }
+  while (S.shown < S.steps.length && S.steps[S.shown][0] <= S.t) {
+    const li = document.createElement("li"); li.textContent = S.steps[S.shown][1]; $("steps").appendChild(li); S.shown++;
+  }
+  if (!S.nudged) {
+    if (S.id === "priorities" ? S.usage >= 85 : S.t >= S.nudgeAt) { S.nudged = true; NUDGES[S.id](); }
+  }
+  if (S.t >= S.total) finish();
+  tickUI();
+}
+function tickUI(){
+  const st = $("statusTxt"); if (!st) return;
+  if (S.running) st.textContent = S.paused ? `Paused at ${fmt(S.t)}` : `Working for ${fmt(S.t)}, about ${left()} min left`;
+  if (S.id === "priorities" && $("usageTxt")) {
+    $("usageTxt").textContent = S.usage.toFixed(0) + "% used";
+    $("usageFill").style.width = S.usage + "%";
+    $("costTxt").textContent = "$" + S.cost.toFixed(2) + " so far";
+  }
+  document.querySelectorAll("[data-left]").forEach(e => e.textContent = S.running ? `About ${left()} min left on the run` : "The run has finished");
+  if ($("readLeft")) $("readLeft").textContent = S.running ? `Agent: about ${left()} min left` : "Agent finished";
+}
+function finish(){
+  S.running = false;
+  $("dot").className = "dot ok";
+  $("statusTxt").textContent = `Finished in ${fmt(S.t)}`;
+  const li = document.createElement("li"); li.textContent = "Changes ready to review: 2 files edited, tests passing"; $("steps").appendChild(li);
+  if (S.away || S.reading) {
+    $("after").innerHTML = `<div class="nudge"><h3>The agent finished${S.away ? " while you were away" : ""}</h3>
+      <p>Take your time coming back. Everything is ready when you are.</p>
+      <div class="row"><button class="btn primary" id="review">Review changes</button></div></div>`;
+    $("review").onclick = () => { $("after").innerHTML = ""; $("nudge").innerHTML = ""; showCode(); };
+  }
+  tickUI();
+}
+function stopRun(){
+  if (!S.running) return;
+  S.running = false; $("dot").className = "dot still"; $("statusTxt").textContent = `Stopped at ${fmt(S.t)}`;
+}
+function setNudge(html){ $("nudge").innerHTML = html ? `<div class="nudge">${html}</div>` : ""; }
+function note(text){ setNudge(`<p class="q">${text}</p>`); }
+
+/* 1 and 2. Engagement */
+const ENGAGE = {
+  light: { from: 13 + 40/60, base: 15 + 10/60, segs: [[13.67,14.45],[14.55]], prompts: 9, run: "2nd" },
+  heavy: { from: 9 + 2/60, base: 16 + 50/60, segs: [[9.03,10.4],[10.6,12.1],[12.9,14.6],[14.75]], prompts: 41, run: "6th" }
+};
+function clock(h){ const hr = Math.floor(h), m = Math.floor((h - hr) * 60); return ((hr + 11) % 12 + 1) + ":" + String(m).padStart(2, "0") + (hr < 12 ? " AM" : " PM"); }
+function nudgeEngagement(){
+  S.nudged = true;
+  const e = ENGAGE[S.id];
+  const now = e.base + S.t / 3600;
+  const mins = Math.round((now - e.from) * 60);
+  const end = Math.max(17, now);
+  const pct = h => (h - 9) / (end - 9) * 100;
+  const segs = e.segs.map(([a, b]) => [a, b === undefined ? now : b]);
+  const dur = mins >= 60 ? `${Math.floor(mins/60)} h ${mins%60} min` : `${mins} min`;
+  setNudge(`<h3>You’ve been working with the agent since ${clock(e.from)}</h3>
+    <p>That’s ${dur} today, ${e.prompts} prompts, and your ${e.run} run on session.ts.</p>
+    <div class="day"><div class="track">${segs.map(([a,b])=>`<div class="seg" style="left:${pct(a)}%;width:${pct(b)-pct(a)}%"></div>`).join("")}</div>
+      <div class="scale"><span>9 AM</span><span>1 PM</span><span>Now, ${clock(now)}</span></div></div>
+    <p data-left></p>
+    <p class="q">How are you feeling right now?</p>
+    <div class="row"><button class="btn" data-f="fresh">Fresh</button><button class="btn" data-f="tired">A bit tired</button><button class="btn" data-f="done">Done for the day</button></div>`);
+  document.querySelectorAll("#nudge [data-f]").forEach(b => b.onclick = () => suggest(b.dataset.f));
+  tickUI();
+}
+function suggest(feel){
+  const heavy = S.id === "heavy";
+  const order = heavy ? ["rest","light","broad"]
+    : { fresh: ["broad","light","rest"], tired: ["light","broad","rest"], done: ["rest","light","broad"] }[feel];
+  const hint = heavy ? {
+      fresh: "That’s a long day with the agent. Even if you feel fine, a break is first on the list.",
+      tired: "You’ve been at this most of the day. A break may help more than reading.",
+      done: "Consider wrapping up. Leave a note for tomorrow and let the run finish on its own." }[feel]
+    : {
+      fresh: "That’s a comfortable stretch. You could use the time to learn more about the project around this task.",
+      tired: "Something light might suit you better right now.",
+      done: "It may be a good time to stop. A short break is first on the list." }[feel];
+  const acts = [["Step away from the screen","10 min"],["Stretch","5 min"],["Get water or a snack","5 min"],["Breathe slowly","2 min"]];
+  const groups = {
+    rest: `<p class="group-title">Take a break</p><div class="list">
+      ${acts.map((a,i)=>`<button class="opt" data-a="${i}"><span>${a[0]}</span><span>${a[1]}</span></button>`).join("")}
+      <button class="opt" id="wrap"><span>Wrap up for today</span><span>Leave a note</span></button></div>`,
+    light: `<p class="group-title">Learn something light</p><div class="list">${["u2","u3","u4"].map(opt).join("")}</div>`,
+    broad: `<p class="group-title">Learn about the bigger project</p><div class="list">${["p1","p2","p3"].map(opt).join("")}</div>`
+  };
+  setNudge(`<h3>A few ways to use the wait</h3><p>${hint}</p><p data-left></p>
+    ${order.map(k => groups[k]).join("")}
+    <div class="row"><button class="btn" id="skip">Keep watching</button></div>`);
+  document.querySelectorAll("#nudge [data-a]").forEach(b => b.onclick = () => onBreak(acts[b.dataset.a]));
+  document.querySelectorAll("#nudge [data-k]").forEach(b => b.onclick = () => showReading(b.dataset.k));
+  $("wrap").onclick = wrapUp;
+  $("skip").onclick = () => note("Okay. The agent keeps working.");
+  tickUI();
+}
+function onBreak(a){
+  S.away = true;
+  setNudge(`<h3>${a[0]}, ${a[1]}</h3><p>The agent keeps working. You’ll get a notification when it finishes or needs you, so there’s no need to check.</p>
+    <p data-left></p><div class="row"><button class="btn" id="back">I’m back</button></div>`);
+  $("back").onclick = () => { S.away = false; note("Welcome back."); };
+  tickUI();
+}
+function wrapUp(){
+  setNudge(`<h3>Leave a note for tomorrow</h3><p>What should you pick up first? The run will finish on its own.</p>
+    <textarea id="noteTxt" aria-label="Note for tomorrow">Review the lock in session.ts, then check the payment retry path.</textarea>
+    <div class="row"><button class="btn primary" id="save">Save note and stop for today</button></div>`);
+  $("save").onclick = () => { S.away = true; note("Saved. Your note and the agent’s results will be here tomorrow morning."); };
+}
+
+/* 3. Priorities */
+function nudgePriorities(){
+  setNudge(`<h3>You’re close to your weekly limit</h3>
+    <p>This run has used 7% of your weekly usage so far. At this pace it may use the rest before it finishes.</p>
+    <p>The agent has also edited 5 files. Your prompt was about one.</p>
+    <p class="q">Do you want to change course?</p>
+    <div class="row"><button class="btn primary" id="p1">Edit the prompt</button><button class="btn" id="p2">Use a lighter model</button><button class="btn" id="p3">Let it finish</button></div>`);
+  $("p1").onclick = editPrompt;
+  $("p2").onclick = () => { S.rate = 0.012; $("model").textContent = "Model: Lighter"; note("Switched to a lighter model. Usage now grows more slowly."); };
+  $("p3").onclick = () => note("Okay. I’ll tell you again if you reach your limit.");
+}
+function editPrompt(){
+  S.paused = true; $("dot").className = "dot still"; tickUI();
+  const chips = ["Only change session.ts","Explain your plan before editing","Stop once tests pass"];
+  setNudge(`<h3>Edit the prompt</h3><p>The run is paused. Nothing more is used until you resume.</p>
+    <textarea id="newPrompt" aria-label="Prompt">${esc(S.prompt)}</textarea>
+    <div class="row">${chips.map(c=>`<button class="chip">${c}</button>`).join("")}</div>
+    <div class="row"><button class="btn primary" id="resume">Resume with this prompt</button><button class="btn" id="cancel">Resume without changes</button></div>`);
+  document.querySelectorAll("#nudge .chip").forEach(c => c.onclick = () => { const t = $("newPrompt"); t.value = t.value.trim() + " " + c.textContent + "."; });
+  $("cancel").onclick = () => { S.paused = false; $("dot").className = "dot"; setNudge(""); };
+  $("resume").onclick = () => {
+    S.prompt = $("newPrompt").value.trim();
+    const old = $("steps"); old.removeAttribute("id");
+    const b = document.createElement("div"); b.className = "bubble"; b.textContent = S.prompt;
+    const ul = document.createElement("ul"); ul.className = "steps"; ul.id = "steps";
+    old.after(b); b.after(ul);
+    S.steps = [[S.t,"Reverting changes outside session.ts"],[S.t+40,"Editing src/auth/session.ts"],[S.t+90,"Running tests (14 passed)"]];
+    S.shown = 0; S.total = S.t + 130; S.rate = 0.015; S.paused = false; $("dot").className = "dot";
+    setNudge("");
+  };
+}
+
+function opt(k){ const r = READINGS[k]; return `<button class="opt" data-k="${k}"><span>${r.t}</span><span>${r.m.split(", ").pop()}</span></button>`; }
+
+const NUDGES = { light: nudgeEngagement, heavy: nudgeEngagement, priorities: nudgePriorities };
+
+$("stop").onclick = stopRun;
+$("engageBtn").onclick = () => nudgeEngagement();
+$("replay").onclick = () => start(S.id);
+const VIEWS = { "1": "light", "2": "heavy", "3": "priorities" };
+function route(){ start(VIEWS[location.hash.slice(1)] || "light"); }
+document.querySelectorAll(".switch button").forEach(b => b.onclick = () => {
+  start(b.dataset.id);
+  try { location.hash = b.dataset.n; } catch (e) {}
+});
+window.addEventListener("hashchange", () => { if (VIEWS[location.hash.slice(1)] !== S.id) route(); });
+route();
+</script>
+</body>
+</html>
