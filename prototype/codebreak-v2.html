@@ -216,6 +216,7 @@ details.res .body{padding:0 12px 12px;display:flex;flex-direction:column;gap:10p
         <input type="text" id="steer" placeholder="Tell the agent something without stopping it…" aria-label="Steer the agent">
         <button class="btn" id="send">Send</button>
         <button class="btn" id="waitBtn">Use the wait</button>
+        <button class="btn" id="engageBtn">Engagement</button>
         <button class="btn" id="stop">Stop</button>
       </div>
     </section>
@@ -860,7 +861,9 @@ function mirror(){
   const runMin = Math.max(1, Math.round(S.t / 60));
   const pct = Math.min(100, Math.round(S.active / Math.max(1, S.t) * 100));
   setCard(`<h3>Today, as far as this window can tell</h3>
-    <p>The agent ran for ${runMin} min. You were reading or typing for about ${activeMin} of them.</p>
+    <p>${S.running
+      ? `The agent has been running for ${runMin} min. You have been reading or typing for about ${activeMin} of them.`
+      : `The agent ran for ${runMin} min. You were reading or typing for about ${activeMin} of them.`}</p>
     <div class="day"><div class="track">
       <div class="seg" style="left:0;width:${pct}%"></div>
       <div class="seg idle" style="left:${pct}%;width:${100-pct}%"></div></div>
@@ -907,6 +910,10 @@ function stopRun(){
 document.querySelectorAll(".presence button").forEach(b => b.onclick = () => setPresence(b.dataset.p));
 $("stop").onclick = stopRun;
 $("waitBtn").onclick = () => offerWait();
+// Always available, never fired on a timer. v1 pushed this screen at you and
+// P6's "my eyes totally skipped over that" was the result; the objection was
+// to being shown it, not to it existing.
+$("engageBtn").onclick = () => mirror();
 $("send").onclick = () => { const v = $("steer").value.trim(); if (!v) return; $("steer").value = ""; queue(v); };
 $("steer").addEventListener("keydown", e => { if (e.key === "Enter") $("send").click(); });
 $("replay").onclick = () => start(S.id);
