@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Waiting prototypes v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FFFFFF; --side:#F4F5F7; --panel:#F7F8FA; --title:#ECEEF1; --soft:#E9EDF3;
+  --text:#1D2430; --muted:#646C79; --faint:#9AA1AC;
+  --accent:#3358D4; --accent-text:#FFFFFF; --track:#DDE2EA;
+  --warn:#9A5B13; --warn-bg:#FBF0E2; --ok:#2E7D5B;
+  --kw:#7A3FBF; --str:#2E7D5B; --com:#9AA1AC;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#1B1D22; --side:#202329; --panel:#1F2227; --title:#16181C; --soft:#2A2E36;
+    --text:#E4E7EC; --muted:#A0A7B2; --faint:#6E7581;
+    --accent:#86A2FF; --accent-text:#10152A; --track:#333843;
+    --warn:#E8B583; --warn-bg:#33281C; --ok:#7FD1A6;
+    --kw:#C49BFF; --str:#7FD1A6; --com:#6E7581;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1B1D22; --side:#202329; --panel:#1F2227; --title:#16181C; --soft:#2A2E36;
+  --text:#E4E7EC; --muted:#A0A7B2; --faint:#6E7581;
+  --accent:#86A2FF; --accent-text:#10152A; --track:#333843;
+  --warn:#E8B583; --warn-bg:#33281C; --ok:#7FD1A6;
+  --kw:#C49BFF; --str:#7FD1A6; --com:#6E7581;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%}
+body{height:100%;margin:0;background:var(--title);color:var(--text);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;line-height:1.5}
+button,textarea,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+a{color:var(--accent)}
+
+.app{height:100%;display:flex;flex-direction:column}
+.titlebar{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--title);flex-wrap:wrap}
+.project{font-weight:500;color:var(--muted);white-space:nowrap}
+.switch{display:flex;gap:4px;margin:0 auto;flex-wrap:wrap;justify-content:center}
+.switch button{padding:5px 12px;border-radius:6px;color:var(--muted)}
+.switch button:hover{color:var(--text)}
+.switch button[aria-current="page"]{background:var(--bg);color:var(--text);font-weight:500}
+.replay{padding:5px 12px;border-radius:6px;color:var(--muted)}
+.replay:hover{color:var(--text)}
+
+.main{flex:1;min-height:0;display:grid;grid-template-columns:210px 1fr 400px}
+.side{background:var(--side);padding:14px 0;overflow:auto}
+.side h4{margin:0 0 6px;padding:0 16px;font-size:12px;font-weight:500;color:var(--faint);text-transform:uppercase;letter-spacing:.04em}
+.tree{list-style:none;margin:0;padding:0;font-size:13px}
+.tree li{padding:3px 16px;color:var(--muted);white-space:nowrap;display:flex;justify-content:space-between;gap:6px}
+.tree .d1{padding-left:28px}.tree .d2{padding-left:40px}
+.tree .on{color:var(--text);font-weight:600}
+.tree .touched{color:var(--text)}
+.tree .touched::after{content:"edited";font-size:11px;color:var(--faint);font-weight:400}
+.tree .outside{color:var(--warn)}
+.tree .outside::after{content:"outside scope";font-size:11px;color:var(--warn);font-weight:400}
+
+.editor{background:var(--bg);display:flex;flex-direction:column;min-width:0}
+.tab{padding:10px 20px 6px;font-size:13px;color:var(--muted);display:flex;justify-content:space-between;gap:12px;align-items:center}
+.code{flex:1;overflow:auto;padding:8px 0 24px;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:13px;line-height:1.7}
+.code pre{margin:0}
+.ln{display:inline-block;width:44px;padding-right:16px;text-align:right;color:var(--faint);user-select:none}
+.kw{color:var(--kw)}.str{color:var(--str)}.com{color:var(--com)}
+
+.reader{flex:1;overflow:auto;padding:24px 32px 40px}
+.reader article{max-width:62ch}
+.reader h2{font-size:22px;font-weight:600;line-height:1.3;margin:0 0 6px}
+.reader .meta{color:var(--muted);margin:0 0 20px;font-size:13px}
+.reader p{font-size:15.5px;line-height:1.65;margin:0 0 14px}
+.reader .foot{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:24px;color:var(--muted)}
+.reader ul{font-size:15.5px;line-height:1.65;padding-left:20px}
+.reader li{margin-bottom:8px}
+
+.agent{background:var(--panel);display:flex;flex-direction:column;min-height:0}
+.agent-head{padding:12px 18px 8px;display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--muted);font-size:13px;flex-wrap:wrap}
+.presence{display:flex;gap:3px;background:var(--soft);border-radius:6px;padding:2px}
+.presence button{padding:3px 9px;border-radius:5px;font-size:12px;color:var(--muted)}
+.presence button[aria-pressed="true"]{background:var(--bg);color:var(--text);font-weight:500}
+
+.phases{display:flex;gap:6px;padding:0 18px 10px;flex-wrap:wrap;font-size:12px;color:var(--faint)}
+.phases span{display:flex;align-items:center;gap:6px}
+.phases span::after{content:"→";color:var(--track)}
+.phases span:last-child::after{content:""}
+.phases .now{color:var(--text);font-weight:600}
+.phases .past{color:var(--muted)}
+
+.feed{flex:1;overflow:auto;padding:4px 18px 18px;display:flex;flex-direction:column;gap:14px}
+.bubble{background:var(--soft);padding:10px 12px;border-radius:8px;align-self:flex-end;max-width:92%}
+.status{display:flex;align-items:center;gap:8px;font-weight:500}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1.4s ease-in-out infinite;flex:none}
+.dot.still{animation:none;background:var(--faint)}
+.dot.ok{animation:none;background:var(--ok)}
+@keyframes pulse{50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.dot{animation:none}}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--muted)}
+.steps li:last-child{color:var(--text)}
+.steps .why{display:block;color:var(--faint);font-size:12px}
+
+.card{background:var(--bg);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.card h3{margin:0;font-size:15px;font-weight:600;line-height:1.35}
+.card p{margin:0;color:var(--muted)}
+.card .q{color:var(--text)}
+.card.warn{background:var(--warn-bg)}
+.card.warn h3{color:var(--warn)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{padding:7px 12px;border-radius:6px;background:var(--soft)}
+.btn:hover{filter:brightness(.97)}
+.btn.primary{background:var(--accent);color:var(--accent-text)}
+.btn.sm{padding:4px 9px;font-size:12px;border-radius:5px}
+.list{display:flex;flex-direction:column;gap:6px}
+.opt{text-align:left;padding:9px 12px;border-radius:6px;background:var(--soft);display:block;width:100%}
+.opt .t{display:flex;justify-content:space-between;gap:10px}
+.opt .t span:last-child{color:var(--muted);white-space:nowrap;font-size:12px}
+.opt .g{display:block;color:var(--muted);font-size:12px;line-height:1.45;margin-top:2px}
+.opt .src{display:block;color:var(--faint);font-size:11px;margin-top:3px}
+.group-title{font-weight:500;color:var(--text)!important;margin-top:4px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px}
+textarea{width:100%;min-height:80px;resize:vertical;border:0;border-radius:6px;padding:10px;background:var(--soft)}
+input[type=text]{width:100%;border:0;border-radius:6px;padding:8px 10px;background:var(--soft)}
+.chip{padding:4px 10px;border-radius:999px;background:var(--soft);font-size:13px}
+.chip.on{background:var(--accent);color:var(--accent-text)}
+
+.scope{margin:0 18px;padding:9px 12px;border-radius:8px;background:var(--bg);font-size:13px;display:flex;flex-direction:column;gap:6px}
+.scope.flag{background:var(--warn-bg)}
+.scope .hd{display:flex;justify-content:space-between;gap:8px;color:var(--muted)}
+.scope.flag .hd{color:var(--warn)}
+.scope ul{list-style:none;margin:0;padding:0;font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px}
+.scope .bad{color:var(--warn);font-weight:500}
+
+details.res{margin:10px 18px 0;background:var(--bg);border-radius:8px;font-size:13px}
+details.res summary{padding:9px 12px;cursor:pointer;color:var(--muted);list-style:none;display:flex;justify-content:space-between;gap:8px}
+details.res summary::-webkit-details-marker{display:none}
+details.res summary::after{content:"show";color:var(--faint);font-size:12px}
+details.res[open] summary::after{content:"hide"}
+details.res .body{padding:0 12px 12px;display:flex;flex-direction:column;gap:10px}
+.gauge{display:flex;flex-direction:column;gap:4px}
+.gauge .top{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.track{position:relative;height:8px;border-radius:4px;background:var(--track);overflow:hidden}
+.fill{position:absolute;inset:0 auto 0 0;background:var(--accent);transition:width .4s linear}
+.fill.hot{background:var(--warn)}
+.note{font-size:12px;color:var(--faint);line-height:1.45}
+
+.day{display:flex;flex-direction:column;gap:4px}
+.day .track{height:10px;border-radius:5px}
+.seg{position:absolute;top:0;bottom:0;background:var(--accent);opacity:.75}
+.seg.idle{background:var(--track);opacity:1}
+.scale{display:flex;justify-content:space-between;font-size:12px;color:var(--faint)}
+
+.composer{padding:10px 18px 16px;display:flex;gap:8px;flex-wrap:wrap}
+.composer input{flex:1;min-width:140px}
+.queued{margin:0 18px;font-size:12px;color:var(--muted)}
+
+.banner{padding:10px 18px;background:var(--accent);color:var(--accent-text);display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.banner button{color:var(--accent-text);text-decoration:underline;font-size:13px}
+
+@media (max-width:1040px){.main{grid-template-columns:1fr 380px}.side{display:none}}
+@media (max-width:760px){.main{grid-template-columns:1fr}.editor{display:none}.editor.reading{display:flex}.editor.reading + .agent{display:none}.project{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="titlebar">
+    <span class="project">checkout-service</span>
+    <nav class="switch" aria-label="Scenarios">
+      <button data-id="short" data-n="1">1 · Short run</button>
+      <button data-id="long" data-n="2">2 · Long run</button>
+      <button data-id="creep" data-n="3">3 · Scope and cost</button>
+    </nav>
+    <button class="replay" id="replay">Replay</button>
+  </header>
+
+  <div id="banner"></div>
+
+  <div class="main">
+    <aside class="side">
+      <h4>Files</h4>
+      <ul class="tree" id="tree"></ul>
+    </aside>
+
+    <section class="editor" id="editor"></section>
+
+    <section class="agent">
+      <div class="agent-head">
+        <span id="runName">Run on session.ts</span>
+        <div class="presence" role="group" aria-label="How present are you?">
+          <button data-p="watching">Watching</button>
+          <button data-p="half">Half here</button>
+          <button data-p="away">Away</button>
+        </div>
+      </div>
+
+      <div class="phases" id="phases"></div>
+      <div class="scope" id="scope"></div>
+      <div class="feed" id="feed"></div>
+      <div class="queued" id="queued"></div>
+
+      <details class="res" id="resWrap">
+        <summary id="resSummary">Usage, cost and machine</summary>
+        <div class="body" id="resBody"></div>
+      </details>
+
+      <div class="composer">
+        <input type="text" id="steer" placeholder="Tell the agent something without stopping it…" aria-label="Steer the agent">
+        <button class="btn" id="send">Send</button>
+        <button class="btn" id="waitBtn">Use the wait</button>
+        <button class="btn" id="stop">Stop</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+/* ---------------------------------------------------------------------------
+   CodeBreak waiting interface, version 2.
+
+   Every change here traces to an interview finding. The short version:
+
+   - No time remaining anywhere. Nothing can predict it. Phase and elapsed
+     time only.                                        (P4, P5)
+   - Presence is declared by the person, never inferred, and never a question
+     about feelings.                                   (P2, P3, P4)
+   - "How long do you have" replaces "how do you feel" as the one question
+     asked before suggesting anything.                 (P2, P4)
+   - Suggestions are all shown at once, never reordered on your behalf, and
+     carry a real source link plus one line of what is in it.  (P4, P5, P6)
+   - Cost and usage are collapsed by default and speak only at a threshold
+     you set.                                          (P1, P2, P5, P6)
+   - Files touched are visible live, out-of-scope edits are flagged, and
+     nothing is ever auto-suspended.                   (P3, P5)
+   - Coming back is designed for: a loud finish, then a short catch-up that
+     expands rather than a wall of text.               (P3, P5, P6)
+   - The engagement mirror counts time you were actually reading or typing,
+     and says plainly what it cannot see.              (P1, P4)
+--------------------------------------------------------------------------- */
+
+const CODE = `import { refreshToken } from "./api";
+import { getSession, saveSession } from "./store";
+
+const REFRESH_WINDOW_MS = 60_000;
+
+export async function ensureFreshSession() {
+  const session = await getSession();
+  if (!session) return null;
+
+  const expiresIn = session.expiresAt - Date.now();
+  if (expiresIn > REFRESH_WINDOW_MS) return session;
+
+  try {
+    const next = await refreshToken(session.refreshToken);
+    await saveSession(next);
+    return next;
+  } catch (err) {
+    // TODO: checkout fails here when two refreshes race
+    throw new Error("Session expired");
+  }
+}`;
+
+const TITLE = "Waiting prototypes v2";
+
+const PROMPT = "Fix the race in ensureFreshSession so checkout doesn’t fail when two token refreshes happen at once.";
+
+const FILES = [
+  {p:"src", d:0}, {p:"auth", d:1},
+  {p:"src/auth/api.ts", d:2, n:"api.ts"},
+  {p:"src/auth/session.ts", d:2, n:"session.ts", open:true},
+  {p:"src/auth/store.ts", d:2, n:"store.ts"},
+  {p:"checkout", d:1},
+  {p:"src/checkout/cart.ts", d:2, n:"cart.ts"},
+  {p:"src/checkout/payment.ts", d:2, n:"payment.ts"},
+  {p:"tests", d:0},
+  {p:"tests/session.test.ts", d:1, n:"session.test.ts"},
+  {p:"package.json", d:0, n:"package.json"}
+];
+
+/* Steps carry a phase and, where relevant, the file touched and a plain
+   sentence saying why. P1 found the agent's own language hard to read;
+   P2 wanted a tiny summary per completed task. */
+const SCENARIOS = {
+  short: {
+    total: 260, nudgeAt: 45, usage: 41, burn: 0.006, spend: 0.0015,
+    scope: ["src/auth/session.ts","tests/session.test.ts"],
+    scopeLabel: "session.ts", limit: "Only change src/auth/session.ts and its test. Revert the rest.",
+    steps: [
+      [0,  "Reading session.ts","read","src/auth/session.ts","Finding where the refresh happens"],
+      [40, "Found 4 places that call ensureFreshSession","read",null,"Checking what each one expects back"],
+      [90, "Planning a shared lock around the refresh","plan",null,"So the second caller waits instead of starting its own"],
+      [140,"Editing session.ts","edit","src/auth/session.ts","Adding the lock and reusing the in-flight refresh"],
+      [200,"Running tests","test",null,"14 passed"]
+    ]
+  },
+  long: {
+    total: 620, nudgeAt: 55, usage: 44, burn: 0.006, spend: 0.0015,
+    scope: ["src/auth/session.ts","src/auth/store.ts","src/auth/api.ts","tests/session.test.ts"],
+    scopeLabel: "the auth files", limit: "Only change files under src/auth and its test. Revert the rest.",
+    steps: [
+      [0,  "Reading session.ts","read","src/auth/session.ts","Finding where the refresh happens"],
+      [45, "Reading store.ts and api.ts","read","src/auth/store.ts","Checking how tokens are saved and fetched"],
+      [110,"Found 4 places that call ensureFreshSession","read",null,"Checking what each one expects back"],
+      [180,"Planning a shared lock around the refresh","plan",null,"So the second caller waits instead of starting its own"],
+      [260,"Editing session.ts","edit","src/auth/session.ts","Adding the lock and reusing the in-flight refresh"],
+      [350,"Running tests","test",null,"12 passed, 2 failed on the retry path"],
+      [450,"Editing session.test.ts","edit","tests/session.test.ts","The two failures assumed the old behaviour"],
+      [540,"Running tests again","test",null,"14 passed"]
+    ]
+  },
+  creep: {
+    total: 700, nudgeAt: 150, usage: 78, burn: 0.05, spend: 0.004,
+    scope: ["src/auth/session.ts","src/auth/store.ts","src/auth/api.ts","tests/session.test.ts"],
+    scopeLabel: "the auth files", limit: "Only change files under src/auth and its test. Revert the checkout files.",
+    steps: [
+      [0,  "Reading session.ts","read","src/auth/session.ts","Finding where the refresh happens"],
+      [60, "Editing session.ts","edit","src/auth/session.ts","Adding the lock and reusing the in-flight refresh"],
+      [120,"Editing store.ts","edit","src/auth/store.ts","Changing how the saved token is read"],
+      [190,"Editing api.ts","edit","src/auth/api.ts","Changing the refresh call signature"],
+      [260,"Editing cart.ts","edit","src/checkout/cart.ts","Updating a caller to match the new signature"],
+      [340,"Editing payment.ts","edit","src/checkout/payment.ts","Updating a caller to match the new signature"],
+      [430,"Rewriting checkout tests","edit","tests/session.test.ts","The signature change broke them"],
+      [540,"Running tests","test",null,"31 passed, 6 failed in checkout"],
+      [640,"Fixing failing checkout tests","edit","src/checkout/payment.ts","Restoring the old error message"]
+    ]
+  }
+};
+
+const PHASES = [["read","Reading"],["plan","Planning"],["edit","Editing"],["test","Testing"]];
+
+/* P5 asked for a line about what is in a source beyond its title. P6 asked
+   for links to the real thing rather than a summary of it. So each item
+   carries a gist and, where it exists outside the company, a real URL. */
+const READINGS = {
+  p1:{t:"Why checkout moved to token refresh", len:4, grp:"project", src:"Internal design note, platform team",
+    g:"The reasoning behind the short-token design your run is working inside.", b:[
+    "In March the team replaced long-lived sessions with short tokens that refresh in the background. The goal was to limit how long a stolen token stays useful.",
+    "The tradeoff was more moving parts at checkout. When a cart page and a payment call both notice an expiring token, they can each try to refresh it, and one of them loses.",
+    "The note suggests a single shared refresh that every caller waits on. That is the approach your current run is building."]},
+  p2:{t:"How the payments team calls this service", len:5, grp:"project", src:"Internal integration overview",
+    g:"Who breaks if the error message or retry behaviour changes.", b:[
+    "Payments calls ensureFreshSession before every charge request, and retries once on failure. A failed refresh shows up to customers as a declined card.",
+    "Their dashboards count these as checkout errors, which is why the race you are fixing matters to their numbers as well as yours.",
+    "If your change alters the error message or the retry behavior, they ask for a heads-up in their channel."]},
+  p3:{t:"This quarter’s goal for checkout", len:2, grp:"project", src:"Internal team goals",
+    g:"Where this fix sits among the three projects meant to move the number.", b:[
+    "The checkout group aims to cut failed checkouts by a fifth this quarter. Session errors are the second largest cause after payment provider timeouts.",
+    "Fixing the refresh race is listed as one of three projects expected to move that number."]},
+  r1:{t:"How Rust prevents data races", len:6, grp:"adjacent", src:"The Rust Programming Language, ch. 4",
+    url:"https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html",
+    g:"The ownership rules that make the bug your agent is fixing hard to write at all.", b:[
+    "Rust gives every value exactly one owner. When the owner goes out of scope the value is freed, so there is no garbage collector and no manual free.",
+    "Other code can borrow a value, either many readers at once or a single writer, never both. The compiler checks these rules before the program runs.",
+    "That check is why data races, like the one your agent is fixing, are hard to write in Rust in the first place."]},
+  r2:{t:"Locks, mutexes and why they deadlock", len:7, grp:"adjacent", src:"Wikipedia",
+    url:"https://en.wikipedia.org/wiki/Lock_(computer_science)",
+    g:"What you are agreeing to when the agent adds a lock, including the failure mode.", b:[
+    "A lock lets one piece of code hold a resource while others wait. The cost is that waiting code is stopped, and two pieces of code waiting on each other never finish.",
+    "The pattern your agent is applying, where the second caller joins the first call's result instead of starting its own, avoids holding a lock across the network request.",
+    "That distinction is worth checking in the diff when the run finishes."]},
+  u1:{t:"A short history of the computer mouse", len:4, grp:"light", src:"Wikipedia",
+    url:"https://en.wikipedia.org/wiki/Computer_mouse",
+    g:"Engelbart's wooden block with two wheels, and the 1968 demo it appeared in.", b:[
+    "Douglas Engelbart’s team built the first mouse in the 1960s: a wooden block with two metal wheels underneath.",
+    "It appeared in public in 1968, in a demo that also showed hypertext and video calls. It took until the 1980s, with the Apple Lisa and Macintosh, for the mouse to reach ordinary desks."]},
+  u2:{t:"Why sourdough rises", len:3, grp:"light", src:"Wikipedia",
+    url:"https://en.wikipedia.org/wiki/Sourdough",
+    g:"Wild yeast, trapped carbon dioxide, and where the sour taste comes from.", b:[
+    "A sourdough starter is a colony of wild yeast and lactic acid bacteria living in flour and water.",
+    "The yeast eat sugars from the flour and release carbon dioxide, which gets trapped in the stretchy gluten network and lifts the dough. The bacteria make acids that give the bread its tang."]},
+  u3:{t:"Basics of colour contrast", len:5, grp:"light", src:"W3C, Understanding WCAG 2.2",
+    url:"https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html",
+    g:"Why hue matters far less than lightness, and the grayscale test.", b:[
+    "Contrast is the difference in lightness between text and its background. Hue matters much less than people expect.",
+    "Accessibility guidelines ask for a contrast ratio of at least 4.5 to 1 for body text. A quick test is to view your design in grayscale: if text gets hard to read, contrast is too low."]}
+};
+
+/* Two generated views. P6 wanted the repo explained back to them; P3 wanted
+   to see the plan on tasks that matter. Both are about the work in front of
+   you rather than a detour away from it. */
+const GENERATED = {
+  repo:{t:"What is in this repository", len:5, src:"Generated from the current checkout, not from the model’s memory",
+    html:`<p>Four folders do most of the work.</p>
+    <ul>
+      <li><strong>src/auth</strong> holds the session: <code>session.ts</code> decides when a token is stale, <code>store.ts</code> reads and writes it, <code>api.ts</code> talks to the auth service. Your run is in here.</li>
+      <li><strong>src/checkout</strong> is the biggest caller. <code>cart.ts</code> and <code>payment.ts</code> both ask for a fresh session before they do anything a customer would notice.</li>
+      <li><strong>tests</strong> has one file for sessions. The checkout tests live with the payments team, in another repository, which is why a change here can pass locally and still break them.</li>
+      <li><strong>package.json</strong> pins the auth client. It has not moved in eight months.</li>
+    </ul>
+    <p>The thing most people miss on their first read: nothing in <code>src/checkout</code> catches a failed refresh. It surfaces to the customer as a declined card.</p>`},
+  plan:{t:"The plan the agent is working from", len:2, src:"The agent’s current plan, in its own words, shortened",
+    html:`<ol>
+      <li>Find every caller of <code>ensureFreshSession</code>. Four of them.</li>
+      <li>Keep one in-flight refresh in a module-level variable. The first caller starts it; the rest wait on the same promise.</li>
+      <li>Clear the variable when it settles, so a later expiry starts a fresh one.</li>
+      <li>Leave the thrown error and its message alone, because payments matches on it.</li>
+      <li>Run the session tests. Expect two to fail, because they assume each caller refreshes on its own.</li>
+    </ol>
+    <p>Step 4 is the one worth disagreeing with if you think the message should change.</p>`}
+};
+
+const BREAKS = [
+  ["Step away from the screen", 10],
+  ["Stretch your shoulders and neck", 5],
+  ["Get water", 2],
+  ["Look at something 20 feet away", 1]
+];
+
+let S = {};
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = t => { t = Math.round(t); return Math.floor(t/60) + "m " + String(t%60).padStart(2,"0") + "s"; };
+
+/* -------------------------------------------------- stored preferences --- */
+const PREF_KEY = "codebreak.prefs.v2";
+const DEFAULT_PREFS = { interests: ["poetry", "Hindi vocabulary"], costAlert: 90, showCost: true, sound: true, mirror: true };
+let P = Object.assign({}, DEFAULT_PREFS);
+try { const raw = localStorage.getItem(PREF_KEY); if (raw) P = Object.assign({}, DEFAULT_PREFS, JSON.parse(raw)); } catch (e) {}
+function savePrefs(){ try { localStorage.setItem(PREF_KEY, JSON.stringify(P)); } catch (e) {} }
+
+/* ------------------------------------------------------------- editor --- */
+function highlight(line){
+  const re = /(\/\/.*$)|("[^"]*")|\b(import|from|export|const|async|await|function|return|if|try|catch|throw|new|null)\b/g;
+  let out = "", last = 0, m;
+  while ((m = re.exec(line))) {
+    out += esc(line.slice(last, m.index));
+    const cls = m[1] ? "com" : m[2] ? "str" : "kw";
+    out += `<span class="${cls}">${esc(m[0])}</span>`;
+    last = re.lastIndex;
+  }
+  return out + esc(line.slice(last));
+}
+function showCode(){
+  const ed = $("editor"); ed.classList.remove("reading"); S.reading = false;
+  ed.innerHTML = `<div class="tab"><span>session.ts</span><span>read only while the agent edits</span></div>
+    <div class="code"><pre>${CODE.split("\n").map((l,i)=>`<span class="ln">${i+1}</span>${highlight(l)}`).join("\n")}</pre></div>`;
+}
+/* Readings open in the editor pane, never in the agent thread.
+   P6: "I want this to open up separately where it doesn't impact my main chat." */
+function showReading(key){
+  const r = READINGS[key], ed = $("editor"); ed.classList.add("reading"); S.reading = true;
+  const link = r.url ? ` · <a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">open the original</a>` : "";
+  ed.innerHTML = `<div class="tab"><span>Reading</span><span id="readStatus"></span></div>
+    <div class="reader"><article><h2>${esc(r.t)}</h2>
+    <p class="meta">${esc(r.src)}, about ${r.len} min${link}</p>
+    ${r.b.map(p=>`<p>${esc(p)}</p>`).join("")}
+    <div class="foot"><button class="btn" id="backCode">Back to the code</button>
+    ${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">Read it at the source</a>` : ""}</div>
+    </article></div>`;
+  $("backCode").onclick = showCode;
+  tickUI();
+}
+function showGenerated(key){
+  const g = GENERATED[key], ed = $("editor"); ed.classList.add("reading"); S.reading = true;
+  ed.innerHTML = `<div class="tab"><span>Reading</span><span id="readStatus"></span></div>
+    <div class="reader"><article><h2>${esc(g.t)}</h2>
+    <p class="meta">${esc(g.src)}, about ${g.len} min</p>${g.html}
+    <div class="foot"><button class="btn" id="backCode">Back to the code</button></div></article></div>`;
+  $("backCode").onclick = showCode;
+  tickUI();
+}
+
+/* --------------------------------------------------------------- tree --- */
+function renderTree(){
+  $("tree").innerHTML = FILES.map(f => {
+    const cls = ["d0","d1","d2"][f.d];
+    let extra = "";
+    if (f.n && S.touched && S.touched.has(f.p)) extra = S.scope.includes(f.p) ? " touched" : " outside";
+    if (f.open) extra += " on";
+    return `<li class="${cls}${extra}"><span>${esc(f.n || f.p)}</span></li>`;
+  }).join("");
+}
+
+/* -------------------------------------------------------------- scope --- */
+/* P5 interrupts exactly when a file is touched that should not be.
+   P3 was clear that alerting is right and auto-suspending is not. */
+function renderScope(){
+  const touched = [...S.touched];
+  const outside = touched.filter(f => !S.scope.includes(f));
+  const el = $("scope");
+  el.className = "scope" + (outside.length ? " flag" : "");
+  el.innerHTML = `<div class="hd"><span>${
+      outside.length ? `${outside.length} file${outside.length>1?"s":""} edited outside what you asked for`
+                     : `Files edited: ${touched.length}`
+    }</span>${outside.length ? `<button class="btn sm" id="limitBtn">Limit to scope</button>` : ""}</div>
+    <ul>${touched.map(f=>`<li class="${S.scope.includes(f)?"":"bad"}">${esc(f.split("/").pop())}</li>`).join("") || "<li>None yet</li>"}</ul>`;
+  if ($("limitBtn")) $("limitBtn").onclick = () => queue(S.limit);
+}
+
+/* ------------------------------------------------------------- phases --- */
+/* The honest replacement for a time estimate: where it is now, not when it
+   will be done. P4: "I just don't know what stage of the process it's in." */
+function renderPhases(){
+  const i = PHASES.findIndex(p => p[0] === S.phase);
+  $("phases").innerHTML = PHASES.map(([k,label],j)=>{
+    const cls = !S.running && S.finished ? "past" : j === i ? "now" : j < i ? "past" : "";
+    return `<span class="${cls}">${label}</span>`;
+  }).join("");
+}
+
+/* ---------------------------------------------------------- resources --- */
+/* Collapsed by default and quiet until a threshold you set.
+   P6: "more stressful than it is informative." P1: "something to expand or
+   close, because not all people need to see it." */
+function renderRes(){
+  if (!P.showCost) {
+    $("resWrap").open = false;
+    $("resSummary").textContent = "Usage and cost are hidden";
+    $("resBody").innerHTML = `<p class="note">You turned this off. Nothing about tokens or money will interrupt you.</p>
+      <div class="row"><button class="btn sm" id="showCost">Show it again</button></div>`;
+    $("showCost").onclick = () => { P.showCost = true; savePrefs(); renderRes(); };
+    return;
+  }
+  $("resSummary").textContent = "Usage, cost and machine";
+  const hot = S.usage >= P.costAlert;
+  $("resBody").innerHTML = `
+    <div class="gauge"><div class="top"><span>Weekly usage</span><span id="uPct">${S.usage.toFixed(0)}%</span></div>
+      <div class="track"><div class="fill${hot?" hot":""}" id="uFill" style="width:${S.usage}%"></div></div></div>
+    <div class="gauge"><div class="top"><span>This run</span><span id="uCost">$${S.cost.toFixed(2)}</span></div></div>
+    <div class="gauge"><div class="top"><span>Memory on this machine</span><span>11.2 of 16 GB</span></div>
+      <div class="track"><div class="fill" style="width:70%"></div></div></div>
+    <div class="gauge"><div class="top"><span>Disk used by the agent’s cache</span><span>4.1 GB</span></div></div>
+    <p class="note">P2 asked for this: the agent stores things on your machine that you never see. Battery and CPU would sit here too.</p>
+    <div class="row"><span class="note">Interrupt me at</span>
+      ${[80,90,100].map(v=>`<button class="chip${P.costAlert===v?" on":""}" data-th="${v}">${v}%</button>`).join("")}
+      <button class="btn sm" id="hideCost">Never show this</button></div>`;
+  document.querySelectorAll("#resBody [data-th]").forEach(b => b.onclick = () => {
+    P.costAlert = +b.dataset.th; savePrefs(); renderRes();
+  });
+  $("hideCost").onclick = () => { P.showCost = false; savePrefs(); renderRes(); };
+}
+
+/* ------------------------------------------------------------- engine --- */
+function start(id){
+  clearInterval(S.timer); clearInterval(S.flash);
+  document.title = TITLE;
+  const sc = SCENARIOS[id];
+  S = {
+    id, total: sc.total, steps: sc.steps.slice(), nudgeAt: sc.nudgeAt, scope: sc.scope.slice(), baseScope: sc.scope.slice(),
+    scopeLabel: sc.scopeLabel, limit: sc.limit,
+    t: 0, running: true, paused: false, finished: false, shown: 0, nudged: false,
+    phase: "read", touched: new Set(), usage: sc.usage, burn: sc.burn, spend: sc.spend,
+    cost: 0, prompt: PROMPT, away: false, awayAt: 0, reading: false, active: 0, lastInput: Date.now(),
+    queued: [], usageAlerted: false, scopeAlerted: false, timer: null, flash: null, breakUntil: 0, breakName: ""
+  };
+  document.querySelectorAll(".switch button").forEach(b => {
+    if (b.dataset.id === id) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current");
+  });
+  setPresence(P.lastPresence || "watching", true);
+  $("banner").innerHTML = "";
+  $("queued").textContent = "";
+  showCode();
+  $("feed").innerHTML = `<div class="bubble">${esc(S.prompt)}</div>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusTxt"></span></div>
+    <ul class="steps" id="steps"></ul><div id="nudge"></div><div id="after"></div>`;
+  renderTree(); renderScope(); renderPhases(); renderRes();
+  S.timer = setInterval(tick, 100);
+  tickUI();
+}
+
+function tick(){
+  if (S.breakUntil && Date.now() >= S.breakUntil) { S.breakUntil = 0; breakOver(); }
+  if (!S.running || S.paused) return;
+  S.t += 1;                                   // ten simulated seconds per real second
+  S.usage = Math.min(100, S.usage + S.burn);
+  S.cost += S.spend;
+
+  if (document.hasFocus() && Date.now() - S.lastInput < 12000 && !S.away) S.active += 1;
+
+  while (S.shown < S.steps.length && S.steps[S.shown][0] <= S.t) {
+    const [, text, phase, file, why] = S.steps[S.shown];
+    S.phase = phase;
+    const li = document.createElement("li");
+    li.innerHTML = `${esc(text)}${why ? `<span class="why">${esc(why)}</span>` : ""}`;
+    $("steps").appendChild(li);
+    if (file) { S.touched.add(file); renderTree(); renderScope(); }
+    renderPhases();
+    S.shown++;
+  }
+
+  if (!S.scopeAlerted && [...S.touched].some(f => !S.scope.includes(f))) {
+    S.scopeAlerted = true; alertScope();
+  } else if (!S.usageAlerted && P.showCost && S.usage >= P.costAlert) {
+    S.usageAlerted = true; alertUsage();
+  // Only "half here" gets offered the list. "Watching" asked not to be
+  // interrupted, and interrupting someone who just said they are leaving is
+  // the exact thing this interface is trying not to do.
+  } else if (!S.nudged && S.nudgeAt && S.t >= S.nudgeAt && S.presence === "half") {
+    S.nudged = true; offerWait();
+  }
+
+  if (S.t >= S.total) finish();
+  tickUI();
+}
+
+function tickUI(){
+  const st = $("statusTxt");
+  if (st) {
+    const label = (PHASES.find(p => p[0] === S.phase) || ["","Working"])[1];
+    st.textContent = S.finished ? `Finished in ${fmt(S.t)}`
+      : S.paused ? `Paused at ${fmt(S.t)}`
+      : !S.running ? `Stopped at ${fmt(S.t)}`
+      : `${label} · ${fmt(S.t)} so far`;
+  }
+  if ($("readStatus")) $("readStatus").textContent = S.running ? "The agent is still working" : "The agent has stopped";
+  // Update the numbers in place. Re-rendering the whole panel ten times a
+  // second would tear the buttons out from under the pointer.
+  if ($("uPct")) {
+    $("uPct").textContent = S.usage.toFixed(0) + "%";
+    $("uFill").style.width = S.usage + "%";
+    $("uFill").className = "fill" + (S.usage >= P.costAlert ? " hot" : "");
+    $("uCost").textContent = "$" + S.cost.toFixed(2);
+  }
+}
+
+/* ---------------------------------------------------------- presence --- */
+/* Declared, not inferred, and not a question about your feelings.
+   P2: "I don't know if I want my machine knowing how I feel."
+   P3 and P5 both described the setting changing by time of day; this is
+   that setting, made explicit and reversible. */
+function setPresence(p, quiet){
+  S.presence = p;
+  P.lastPresence = p; savePrefs();
+  document.querySelectorAll(".presence button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.p === p)));
+  if (quiet) return;
+  if (p === "watching") { setCard(""); note("Nothing will interrupt you. The step list is enough."); }
+  if (p === "half")  note("You’ll get one nudge with things to do, and a clear signal when the run ends.");
+  if (p === "away")  { S.away = true; S.awayAt = S.t; goAway(); }
+}
+
+function goAway(){
+  setCard(`<h3>Away</h3>
+    <p>The agent keeps working. When you come back there will be a short summary of what changed, not the whole log.</p>
+    <p class="note">If it finishes first, the tab title will change and ${P.sound ? "a sound will play" : "no sound will play"}.</p>
+    <div class="row"><button class="btn primary" id="imBack">I’m back</button>
+      <button class="btn" id="soundT">${P.sound ? "Mute the finish sound" : "Unmute the finish sound"}</button></div>`);
+  $("imBack").onclick = comeBack;
+  $("soundT").onclick = () => { P.sound = !P.sound; savePrefs(); goAway(); };
+}
+
+/* P3: the hardest part is coming back and reading what it did.
+   P3 again: a huge wall of text is demoralising. So: three lines, then
+   expand if you want the rest. */
+function comeBack(){
+  S.away = false;
+  setPresence("watching", true);
+  const since = S.steps.filter(s => s[0] > S.awayAt && s[0] <= S.t);
+  const files = [...S.touched];
+  const outside = files.filter(f => !S.scope.includes(f));
+  setCard(`<h3>While you were away</h3>
+    <ul class="steps">
+      <li>${since.length} step${since.length === 1 ? "" : "s"}, ${fmt(S.t - S.awayAt)} of agent time</li>
+      <li>${files.length} file${files.length === 1 ? "" : "s"} edited${outside.length ? `, ${outside.length} outside what you asked for` : ""}</li>
+      <li>${S.finished ? "The run has finished" : "Still " + (PHASES.find(p => p[0] === S.phase) || ["","working"])[1].toLowerCase()}</li>
+    </ul>
+    <div class="row"><button class="btn" id="expand">Show me each step</button>
+      ${outside.length ? `<button class="btn primary" id="limit2">Limit it to scope</button>` : ""}</div>`);
+  $("expand").onclick = () => {
+    setCard(`<h3>While you were away</h3>
+      <ul class="steps">${since.map(s => `<li>${esc(s[1])}<span class="why">${esc(s[4] || "")}</span></li>`).join("") || "<li>Nothing happened yet</li>"}</ul>
+      <div class="row"><button class="btn" id="ok">Done</button></div>`);
+    $("ok").onclick = () => setCard("");
+  };
+  if ($("limit2")) $("limit2").onclick = () => queue(S.limit);
+}
+
+/* ------------------------------------------------------- the one ask --- */
+/* P4 objected to being asked a question and then having the answer used to
+   reorder things on their behalf. So the only question is about time you
+   have, which is a fact you know, and it filters rather than ranks. All
+   three groups stay on screen in a fixed order. */
+function offerWait(){
+  setCard(`<h3>The agent is working. How long do you have?</h3>
+    <p>This only filters the list. Nothing is hidden from you and nothing is reordered.</p>
+    <div class="row">
+      <button class="btn" data-w="2">A couple of minutes</button>
+      <button class="btn" data-w="8">Ten or so</button>
+      <button class="btn" data-w="99">I’m leaving the desk</button>
+      <button class="btn" id="noThanks">Nothing, just watch</button>
+    </div>`);
+  document.querySelectorAll("#nudge [data-w]").forEach(b => b.onclick = () => waitList(+b.dataset.w));
+  $("noThanks").onclick = () => { setCard(""); note("Okay. The step list keeps going."); };
+}
+
+function waitList(mins){
+  if (mins === 99) return leaving();
+  const fits = r => r.len <= mins;
+  const pick = grp => Object.entries(READINGS).filter(([,r]) => r.grp === grp && fits(r));
+  const gen = Object.entries(GENERATED).filter(([,g]) => g.len <= mins);
+  const breaks = BREAKS.filter(b => b[1] <= mins);
+  const interests = (P.interests || []).filter(Boolean);
+
+  const block = (title, body) => body ? `<p class="group-title">${title}</p><div class="list">${body}</div>` : "";
+
+  setCard(`<h3>Things that fit in ${mins} minute${mins === 1 ? "" : "s"}</h3>
+    <div class="cols">
+      <div>${block("This task and this repo",
+        gen.map(([k,g]) => optGen(k,g)).join("") + pick("project").map(([k,r]) => optRead(k,r)).join("")) || ""}</div>
+      <div>${block("Around the problem", pick("adjacent").map(([k,r]) => optRead(k,r)).join(""))}</div>
+      <div>${block("Nothing to do with work",
+        pick("light").map(([k,r]) => optRead(k,r)).join("") +
+        interests.map(i => `<button class="opt" data-i="${esc(i)}"><span class="t"><span>Something on ${esc(i)}</span><span>yours</span></span><span class="g">You added this. It would pull from your own sources, not a summary of them.</span></button>`).join(""))}</div>
+      <div>${block("Away from the screen",
+        breaks.map((b,i) => `<button class="opt" data-b="${i}"><span class="t"><span>${esc(b[0])}</span><span>${b[1]} min</span></span><span class="g">A timer runs. Nothing asks how you feel afterwards.</span></button>`).join("") +
+        `<button class="opt" id="wrap"><span class="t"><span>Stop for today</span><span>leave a note</span></span><span class="g">The run finishes on its own and the note is here tomorrow.</span></button>`)}</div>
+    </div>
+    <div class="row"><input type="text" id="newInt" placeholder="Add something you want to learn about" aria-label="Add an interest">
+      <button class="btn sm" id="addInt">Add</button></div>
+    <p class="note">P4 asked for this field: what interests you is not something the agent can guess.</p>
+    <div class="row"><button class="btn" id="skip">Back to watching</button></div>`);
+
+  document.querySelectorAll("#nudge [data-k]").forEach(b => b.onclick = () => showReading(b.dataset.k));
+  document.querySelectorAll("#nudge [data-g]").forEach(b => b.onclick = () => showGenerated(b.dataset.g));
+  document.querySelectorAll("#nudge [data-b]").forEach(b => b.onclick = () => takeBreak(breaks[+b.dataset.b]));
+  document.querySelectorAll("#nudge [data-i]").forEach(b => b.onclick = () =>
+    note(`A real build would open your own source on ${b.dataset.i} here, in this pane, not a summary of it.`));
+  $("wrap").onclick = wrapUp;
+  $("skip").onclick = () => setCard("");
+  $("addInt").onclick = () => {
+    const v = $("newInt").value.trim();
+    if (!v) return;
+    P.interests = (P.interests || []).concat(v); savePrefs(); waitList(mins);
+  };
+}
+function optRead(k, r){
+  return `<button class="opt" data-k="${k}"><span class="t"><span>${esc(r.t)}</span><span>${r.len} min</span></span>
+    <span class="g">${esc(r.g)}</span><span class="src">${esc(r.src)}${r.url ? " · has a link to the original" : ""}</span></button>`;
+}
+function optGen(k, g){
+  return `<button class="opt" data-g="${k}"><span class="t"><span>${esc(g.t)}</span><span>${g.len} min</span></span>
+    <span class="g">${esc(g.src)}</span></button>`;
+}
+
+/* P1 liked that a break was bounded: "it is exactly for 10 minutes, so I
+   use my time effectively." P6 disliked being told to drink water, so the
+   wording states a fact and stops. */
+function takeBreak(b){
+  S.breakName = b[0];
+  S.breakUntil = Date.now() + b[1] * 1000;      // one second per simulated minute
+  setCard(`<h3>${esc(b[0])}</h3>
+    <p>${b[1]} minutes. The agent keeps working and will tell you when it is done, so there is no reason to check.</p>
+    <p class="note">The timer is shortened for this prototype.</p>
+    <div class="row"><button class="btn" id="endBreak">I’m back early</button></div>`);
+  $("endBreak").onclick = () => { S.breakUntil = 0; setCard(""); };
+}
+function breakOver(){ note(`${S.breakName} is done. The agent is ${S.running ? "still working" : "finished"}.`); }
+
+function leaving(){
+  setPresence("away");
+}
+
+function wrapUp(){
+  setCard(`<h3>Leave a note for tomorrow</h3><p>What should you pick up first? The run finishes on its own.</p>
+    <textarea id="noteTxt" aria-label="Note for tomorrow">Check the lock in session.ts, then the payment retry path.</textarea>
+    <div class="row"><button class="btn primary" id="save">Save and stop for today</button></div>`);
+  $("save").onclick = () => { S.away = true; S.awayAt = S.t;
+    note("Saved. The note and the diff will be the first thing here tomorrow."); };
+}
+
+/* ------------------------------------------------------------ alerts --- */
+function alertScope(){
+  const outside = [...S.touched].filter(f => !S.scope.includes(f));
+  setCard(`<h3>It is editing files you did not mention</h3>
+    <p>You asked about <strong>${esc(S.scopeLabel)}</strong>. It has also changed ${outside.map(f => `<strong>${esc(f.split("/").pop())}</strong>`).join(" and ")}.</p>
+    <p class="note">Nothing was suspended. P3: "automatically suspending is not a good idea. Just alerting me is enough."</p>
+    <div class="row"><button class="btn primary" id="a1">Limit it to ${esc(S.scopeLabel)}</button>
+      <button class="btn" id="a2">Ask why it needed them</button>
+      <button class="btn" id="a3">That’s fine</button></div>`, "warn");
+  $("a1").onclick = () => queue(S.limit);
+  $("a2").onclick = () => queue("Why did you need to change the checkout files? Answer before continuing.");
+  $("a3").onclick = () => { S.scope = S.scope.concat(outside); renderScope(); renderTree(); setCard("");
+    note("Noted. Those files count as in scope for this run."); };
+}
+
+function alertUsage(){
+  setCard(`<h3>You are at ${S.usage.toFixed(0)}% of your weekly usage</h3>
+    <p>You asked to be told at ${P.costAlert}%. This is the only time it will interrupt.</p>
+    <div class="row"><button class="btn primary" id="u1">Switch to a lighter model</button>
+      <button class="btn" id="u2">Let it finish</button>
+      <button class="btn" id="u3">Stop telling me</button></div>`, "warn");
+  $("u1").onclick = () => { S.burn = 0.008; setCard(""); note("Lighter model. Usage climbs more slowly from here."); };
+  $("u2").onclick = () => { setCard(""); note("Okay. You will not hear about this again this run."); };
+  $("u3").onclick = () => { P.showCost = false; savePrefs(); renderRes(); setCard("");
+    note("Hidden. You can turn it back on in the panel below."); };
+}
+
+/* ------------------------------------------------------------ finish --- */
+/* P6: "I would love my Claude Code to yell at me when it's done."
+   P5: "sometimes I'll not realize it's done, and I return later than I'd like." */
+function finish(){
+  S.running = false; S.finished = true;
+  $("dot").className = "dot ok";
+  renderPhases();
+  const li = document.createElement("li");
+  li.innerHTML = `Done. 2 files changed, 14 tests passing<span class="why">The diff is waiting in the editor</span>`;
+  $("steps").appendChild(li);
+
+  if (S.presence !== "watching" || S.away || S.reading || !document.hasFocus()) {
+    shout();
+    setCard(`<h3>The run finished${S.away ? " while you were away" : ""}</h3>
+      <ul class="steps">
+        <li>2 files changed: session.ts and its test</li>
+        <li>14 tests passing, none skipped</li>
+        <li>One decision made for you: the error message was left alone, because payments matches on it</li>
+      </ul>
+      <p class="note">Three lines first. The full diff is one click away, not dumped on you.</p>
+      <div class="row"><button class="btn primary" id="review">Show the diff</button>
+        <button class="btn" id="mirrorBtn">How today went</button></div>`);
+    $("review").onclick = () => { setCard(""); showCode(); };
+    $("mirrorBtn").onclick = mirror;
+  }
+  tickUI();
+}
+
+function shout(){
+  let on = false;
+  const base = TITLE;
+  clearInterval(S.flash);
+  S.flash = setInterval(() => { document.title = (on = !on) ? "✅ Your run finished" : base; }, 900);
+  const stop = () => { clearInterval(S.flash); document.title = base; window.removeEventListener("focus", stop);
+    document.removeEventListener("pointerdown", stop); };
+  window.addEventListener("focus", stop); document.addEventListener("pointerdown", stop);
+  $("banner").innerHTML = `<div class="banner"><span>The run finished.</span>
+    <button id="dismiss">Dismiss</button></div>`;
+  $("dismiss").onclick = () => $("banner").innerHTML = "";
+  if (!P.sound) return;
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.connect(g); g.connect(ac.destination);
+    o.frequency.value = 660; g.gain.value = 0.0001;
+    g.gain.exponentialRampToValueAtTime(0.12, ac.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.5);
+    o.start(); o.stop(ac.currentTime + 0.5);
+  } catch (e) {}
+}
+
+/* ------------------------------------------------------------ mirror --- */
+/* P1's objection decided the design of this: wall-clock time with the agent
+   is not time you worked, because you may have gone for a walk. So it counts
+   only the time you were reading or typing, and says what it cannot see.
+   P3 found a bare number demoralising, so there is no score and no target. */
+function mirror(){
+  if (!P.mirror) {
+    setCard(`<h3>Turned off</h3><p>You asked not to see this.</p>
+      <div class="row"><button class="btn" id="on">Turn it back on</button></div>`);
+    $("on").onclick = () => { P.mirror = true; savePrefs(); mirror(); };
+    return;
+  }
+  const activeMin = Math.max(1, Math.round(S.active / 60));
+  const runMin = Math.max(1, Math.round(S.t / 60));
+  const pct = Math.min(100, Math.round(S.active / Math.max(1, S.t) * 100));
+  setCard(`<h3>Today, as far as this window can tell</h3>
+    <p>The agent ran for ${runMin} min. You were reading or typing for about ${activeMin} of them.</p>
+    <div class="day"><div class="track">
+      <div class="seg" style="left:0;width:${pct}%"></div>
+      <div class="seg idle" style="left:${pct}%;width:${100-pct}%"></div></div>
+      <div class="scale"><span>At the keyboard</span><span>Agent running, you elsewhere</span></div></div>
+    <p class="note">This counts keystrokes and scrolling in this window only. It cannot tell whether you were working in another window or out for a walk, so it does not guess. There is no target here and nothing to beat.</p>
+    <div class="row"><button class="btn" id="close">Close</button>
+      <button class="btn" id="off">Don’t show me this</button></div>`);
+  $("close").onclick = () => setCard("");
+  $("off").onclick = () => { P.mirror = false; savePrefs(); setCard(""); note("Hidden."); };
+}
+
+/* ------------------------------------------------------------- steer --- */
+/* P6: "oh wait, no, don't run that test, run this one." P3 sends a nudge
+   prompt. Neither wanted to kill the run to do it. */
+function queue(text){
+  S.queued.push(text);
+  $("queued").textContent = `Queued for the agent: “${text}” — it will see this at the end of the current step.`;
+  setCard("");
+  setTimeout(() => {
+    if (!S.running) return;
+    const li = document.createElement("li");
+    li.innerHTML = `Picked up your message<span class="why">${esc(text)}</span>`;
+    const steps = $("steps"); if (steps) steps.appendChild(li);
+    $("queued").textContent = "";
+    if (/revert|only change/i.test(text)) {
+      S.scope = S.baseScope.slice();
+      S.touched = new Set([...S.touched].filter(f => S.scope.includes(f)));
+      renderTree(); renderScope();
+    }
+  }, 2200);
+}
+
+function setCard(html, kind){ $("nudge").innerHTML = html ? `<div class="card${kind ? " " + kind : ""}">${html}</div>` : ""; }
+function note(text){ setCard(`<p class="q">${esc(text)}</p>`); }
+
+function stopRun(){
+  if (!S.running) return;
+  S.running = false; $("dot").className = "dot still";
+  renderPhases(); tickUI();
+  note("Stopped. Nothing further is used.");
+}
+
+/* --------------------------------------------------------------- wire --- */
+document.querySelectorAll(".presence button").forEach(b => b.onclick = () => setPresence(b.dataset.p));
+$("stop").onclick = stopRun;
+$("waitBtn").onclick = () => offerWait();
+$("send").onclick = () => { const v = $("steer").value.trim(); if (!v) return; $("steer").value = ""; queue(v); };
+$("steer").addEventListener("keydown", e => { if (e.key === "Enter") $("send").click(); });
+$("replay").onclick = () => start(S.id);
+["keydown","pointerdown","scroll","pointermove"].forEach(ev =>
+  document.addEventListener(ev, () => { S.lastInput = Date.now(); }, {passive:true}));
+
+const VIEWS = { "1":"short", "2":"long", "3":"creep" };
+function route(){ start(VIEWS[location.hash.slice(1)] || "short"); }
+document.querySelectorAll(".switch button").forEach(b => b.onclick = () => {
+  start(b.dataset.id);
+  try { location.hash = b.dataset.n; } catch (e) {}
+});
+window.addEventListener("hashchange", () => { if (VIEWS[location.hash.slice(1)] !== S.id) route(); });
+route();
+</script>
+</body>
+</html>
